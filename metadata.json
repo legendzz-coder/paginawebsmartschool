@@ -1,0 +1,7 @@
+{
+  "name": "smartschool",
+  "description": "pagina",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
