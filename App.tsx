@@ -11,7 +11,8 @@ import { LoginModal } from './components/Auth';
 import { Dashboard } from './components/Dashboard';
 import { VirtualAssistant } from './components/VirtualAssistant';
 import { WelcomeSplash } from './components/WelcomeSplash';
-import { Menu, X, Share2, MapPin, Phone, Mail, User } from 'lucide-react';
+import { SchoolLogo } from './components/SchoolLogo';
+import { Menu, X, Share2, MapPin, Phone, Mail, User, ExternalLink } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Student, Teacher, ScheduleItem, TeacherAttendance, ChatMessage, UserAccount } from './types';
 
@@ -19,9 +20,60 @@ interface UserProfile {
   name: string;
   role: string;
   username?: string;
-  photoUrl?: string;
+  profileColor?: string;
   teacherType?: 'tutor' | 'course';
 }
+
+// --- DEFAULT DATA CONSTANTS (Used if LocalStorage is empty) ---
+const DEFAULT_ACCOUNTS: UserAccount[] = [
+  { id: '1', username: 'victor', password: '12345', name: 'Victor Admin', role: 'admin', profileColor: '#0EA5E9' }, // Blue
+  { id: '2', username: 'luis', password: '12345', name: 'Luis Docente', role: 'docente', teacherType: 'course', profileColor: '#EAB308' }, // Yellow
+];
+
+const DEFAULT_STUDENTS: Student[] = [
+  { 
+    id: '1', 
+    name: 'Carlos Alvarez', 
+    grade: '4to y 5to Grado', 
+    attendance: 'none',
+    fatherName: 'Roberto Alvarez',
+    motherName: 'Elena Gutierrez',
+    dni: '70451234',
+    birthDate: '2014-05-12',
+    originSchool: 'I.E. San Juan'
+  },
+  { 
+    id: '2', 
+    name: 'Maria Lopez', 
+    grade: '4to y 5to Grado', 
+    attendance: 'none',
+    fatherName: 'Juan Lopez',
+    motherName: 'Ana Maria Diaz',
+    dni: '71239876',
+    birthDate: '2014-08-22',
+    originSchool: 'I.E. Los Pinos' 
+  },
+  { id: '3', name: 'Juan Perez', grade: '4to y 5to Grado', attendance: 'none' },
+  { id: '4', name: 'Luis Gomez', grade: '1ro y 2do Grado', attendance: 'none' },
+];
+
+const DEFAULT_TEACHERS: Teacher[] = [
+  { id: '1', name: 'Luis Docente', specialty: 'Matemáticas', email: 'luis@smartschool.edu.pe', assignedGrade: '4to y 5to Grado', teacherType: 'course' },
+  { id: '2', name: 'Ana Torres', specialty: 'Ciencias', email: 'ana@smartschool.edu.pe', assignedGrade: '1ro y 2do Grado', teacherType: 'course' },
+  { id: '3', name: 'Juan Perez', specialty: 'Tutoría', email: 'juan@smartschool.edu.pe', assignedGrade: '3ro Grado', teacherType: 'tutor' },
+  { id: '4', name: 'Pedro Castillo', specialty: 'Historia', email: 'pedro@smartschool.edu.pe', assignedGrade: '6to Grado', teacherType: 'course' }
+];
+
+const DEFAULT_SCHEDULES: ScheduleItem[] = [
+  { id: '1', day: 'Lunes', startTime: '08:00', endTime: '08:45', subject: 'Matemáticas', grade: '4to y 5to Grado', teacherName: 'Luis Docente' },
+  { id: '2', day: 'Lunes', startTime: '08:45', endTime: '09:30', subject: 'Comunicación', grade: '4to y 5to Grado', teacherName: 'Luis Docente' },
+  { id: '3', day: 'Martes', startTime: '08:00', endTime: '08:45', subject: 'Ciencias', grade: '4to y 5to Grado', teacherName: 'Ana Torres' },
+];
+
+const DEFAULT_MESSAGES: ChatMessage[] = [
+  { id: '1', sender: 'Victor Admin', role: 'admin', content: 'Bienvenidos al sistema SmartSchool 2025.', timestamp: '08:00 AM' },
+  { id: '2', sender: 'Luis Docente', role: 'docente', content: 'Gracias, listo para iniciar las clases.', timestamp: '08:05 AM' }
+];
 
 const App: React.FC = () => {
   const [scrolled, setScrolled] = useState(false);
@@ -32,68 +84,53 @@ const App: React.FC = () => {
   
   // Updated Current User State to support Profile updates
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+
+  // Helper to load from LocalStorage
+  const getInitialData = <T,>(key: string, defaultValue: T): T => {
+    try {
+      const saved = localStorage.getItem(key);
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.error(`Error loading ${key} from localStorage`, e);
+    }
+    return defaultValue;
+  };
   
-  // State for Accounts (Login Credentials)
-  const [accounts, setAccounts] = useState<UserAccount[]>([
-    { id: '1', username: 'Joseadmin', password: '123456789', name: 'Jose Admin', role: 'admin' },
-    { id: '2', username: 'TutorJuan', password: 'tutor123', name: 'Juan Perez', role: 'docente', teacherType: 'tutor' },
-    { id: '3', username: 'ProfPedro', password: 'curso123', name: 'Pedro Castillo', role: 'docente', teacherType: 'course' },
-    { id: '4', username: 'Mario', password: '1234', name: 'Mario Gomez', role: 'docente', teacherType: 'course' },
-  ]);
+  // State for Accounts (Login Credentials) - Persisted
+  const [accounts, setAccounts] = useState<UserAccount[]>(() => getInitialData('smartschool_accounts', DEFAULT_ACCOUNTS));
 
-  // State for students database (persists across logins)
-  const [students, setStudents] = useState<Student[]>([
-    { 
-      id: '1', 
-      name: 'Carlos Alvarez', 
-      grade: '4to y 5to Grado', 
-      attendance: 'none',
-      fatherName: 'Roberto Alvarez',
-      motherName: 'Elena Gutierrez',
-      dni: '70451234',
-      birthDate: '2014-05-12',
-      originSchool: 'I.E. San Juan'
-    },
-    { 
-      id: '2', 
-      name: 'Maria Lopez', 
-      grade: '4to y 5to Grado', 
-      attendance: 'none',
-      fatherName: 'Juan Lopez',
-      motherName: 'Ana Maria Diaz',
-      dni: '71239876',
-      birthDate: '2014-08-22',
-      originSchool: 'I.E. Los Pinos' 
-    },
-    { id: '3', name: 'Juan Perez', grade: '4to y 5to Grado', attendance: 'none' },
-    { id: '4', name: 'Luis Gomez', grade: '1ro y 2do Grado', attendance: 'none' },
-  ]);
+  // State for students database - Persisted
+  const [students, setStudents] = useState<Student[]>(() => getInitialData('smartschool_students', DEFAULT_STUDENTS));
 
-  // State for teachers database
-  const [teachers, setTeachers] = useState<Teacher[]>([
-    { id: '1', name: 'Mario Gomez', specialty: 'Matemáticas', email: 'mario@smartschool.edu.pe', assignedGrade: '4to y 5to Grado', teacherType: 'course' },
-    { id: '2', name: 'Ana Torres', specialty: 'Ciencias', email: 'ana@smartschool.edu.pe', assignedGrade: '1ro y 2do Grado', teacherType: 'course' },
-    { id: '3', name: 'Juan Perez', specialty: 'Tutoría', email: 'juan@smartschool.edu.pe', assignedGrade: '3ro Grado', teacherType: 'tutor' },
-    { id: '4', name: 'Pedro Castillo', specialty: 'Historia', email: 'pedro@smartschool.edu.pe', assignedGrade: '6to Grado', teacherType: 'course' }
-  ]);
+  // State for teachers database - Persisted
+  const [teachers, setTeachers] = useState<Teacher[]>(() => getInitialData('smartschool_teachers', DEFAULT_TEACHERS));
 
-  // State for schedules
-  const [schedules, setSchedules] = useState<ScheduleItem[]>([
-    { id: '1', day: 'Lunes', startTime: '08:00', endTime: '08:45', subject: 'Matemáticas', grade: '4to y 5to Grado', teacherName: 'Mario Gomez' },
-    { id: '2', day: 'Lunes', startTime: '08:45', endTime: '09:30', subject: 'Comunicación', grade: '4to y 5to Grado', teacherName: 'Mario Gomez' },
-    { id: '3', day: 'Martes', startTime: '08:00', endTime: '08:45', subject: 'Ciencias', grade: '4to y 5to Grado', teacherName: 'Ana Torres' },
-  ]);
+  // State for schedules - Persisted
+  const [schedules, setSchedules] = useState<ScheduleItem[]>(() => getInitialData('smartschool_schedules', DEFAULT_SCHEDULES));
 
-  // State for teacher attendance
-  const [teacherAttendance, setTeacherAttendance] = useState<TeacherAttendance[]>([
-    { id: '1', teacherName: 'Mario Gomez', date: new Date().toISOString().split('T')[0], entryTime: '07:45', exitTime: '14:00', status: 'Puntual' }
-  ]);
+  // State for teacher attendance - Persisted
+  const [teacherAttendance, setTeacherAttendance] = useState<TeacherAttendance[]>(() => {
+    // Generate a default record for demo purposes if empty, but try to load first
+    const saved = getInitialData<TeacherAttendance[]>('smartschool_attendance', []);
+    if (saved.length === 0) {
+       return [{ id: '1', teacherName: 'Luis Docente', date: new Date().toISOString().split('T')[0], entryTime: '07:45', exitTime: '14:00', status: 'Puntual' }];
+    }
+    return saved;
+  });
 
-  // State for Global Chat
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    { id: '1', sender: 'Jose Admin', role: 'admin', content: 'Bienvenidos al sistema SmartSchool 2025.', timestamp: '08:00 AM' },
-    { id: '2', sender: 'Mario Gomez', role: 'docente', content: 'Gracias, listo para iniciar las clases.', timestamp: '08:05 AM' }
-  ]);
+  // State for Global Chat - Persisted
+  const [messages, setMessages] = useState<ChatMessage[]>(() => getInitialData('smartschool_messages', DEFAULT_MESSAGES));
+
+  // --- PERSISTENCE EFFECTS ---
+  useEffect(() => { localStorage.setItem('smartschool_accounts', JSON.stringify(accounts)); }, [accounts]);
+  useEffect(() => { localStorage.setItem('smartschool_students', JSON.stringify(students)); }, [students]);
+  useEffect(() => { localStorage.setItem('smartschool_teachers', JSON.stringify(teachers)); }, [teachers]);
+  useEffect(() => { localStorage.setItem('smartschool_schedules', JSON.stringify(schedules)); }, [schedules]);
+  useEffect(() => { localStorage.setItem('smartschool_attendance', JSON.stringify(teacherAttendance)); }, [teacherAttendance]);
+  useEffect(() => { localStorage.setItem('smartschool_messages', JSON.stringify(messages)); }, [messages]);
+
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -110,38 +147,44 @@ const App: React.FC = () => {
     };
   }, []);
 
-  // Handle Profile Updates (Name, Photo, etc.)
-  const handleUpdateUser = (updatedData: Partial<UserProfile>) => {
+  // Handle Profile Updates (Name, Color, Password)
+  const handleUpdateUser = (updatedData: { name?: string; username?: string; profileColor?: string; newPassword?: string }) => {
     if (!currentUser) return;
 
     const oldName = currentUser.name;
-    const newName = updatedData.name;
+    const newName = updatedData.name || currentUser.name;
 
-    // Update the current user session
-    setCurrentUser({ ...currentUser, ...updatedData });
+    // 1. Update the current active session state
+    setCurrentUser(prev => ({ 
+      ...prev!, 
+      name: newName,
+      username: updatedData.username || prev!.username,
+      profileColor: updatedData.profileColor || prev!.profileColor
+    }));
     
-    // Update the Accounts Database
+    // 2. Update the Accounts Database (to persist changes)
     if (currentUser.username) {
-      setAccounts(accounts.map(acc => 
-        acc.username === currentUser.username 
-          ? { ...acc, name: newName || acc.name, photoUrl: updatedData.photoUrl || acc.photoUrl }
-          : acc
-      ));
+      setAccounts(prevAccounts => prevAccounts.map(acc => {
+        // Find by original username
+        if (acc.username === currentUser.username) {
+          return { 
+            ...acc, 
+            name: newName, 
+            username: updatedData.username || acc.username,
+            profileColor: updatedData.profileColor || acc.profileColor,
+            password: updatedData.newPassword || acc.password // Update password if provided
+          };
+        }
+        return acc;
+      }));
     }
 
-    // If the name changed, we need to update references in other databases to maintain consistency
+    // 3. If the name changed, we need to update references in other databases to maintain consistency
     if (newName && newName !== oldName) {
-      // 1. Update Teachers List
-      setTeachers(teachers.map(t => t.name === oldName ? { ...t, name: newName } : t));
-      
-      // 2. Update Schedules
-      setSchedules(schedules.map(s => s.teacherName === oldName ? { ...s, teacherName: newName } : s));
-
-      // 3. Update Attendance Records
-      setTeacherAttendance(teacherAttendance.map(t => t.teacherName === oldName ? { ...t, teacherName: newName } : t));
-
-      // 4. Update Chat Messages
-      setMessages(messages.map(m => m.sender === oldName ? { ...m, sender: newName } : m));
+      setTeachers(prevTeachers => prevTeachers.map(t => t.name === oldName ? { ...t, name: newName } : t));
+      setSchedules(prevSchedules => prevSchedules.map(s => s.teacherName === oldName ? { ...s, teacherName: newName } : s));
+      setTeacherAttendance(prevAttendance => prevAttendance.map(t => t.teacherName === oldName ? { ...t, teacherName: newName } : t));
+      setMessages(prevMessages => prevMessages.map(m => m.sender === oldName ? { ...m, sender: newName } : m));
     }
   };
 
@@ -201,12 +244,13 @@ const App: React.FC = () => {
       {/* Navigation */}
       <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled ? 'bg-white/90 backdrop-blur-md shadow-md py-3' : 'bg-white/80 backdrop-blur-sm py-4'}`}>
         <div className="container mx-auto px-6 flex justify-between items-center">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={(e) => handleScroll(e, 'inicio')}>
-            <div className="w-10 h-10 bg-school-primary rounded-lg flex items-center justify-center text-white font-display font-bold text-xl shadow-lg ring-2 ring-school-accent/50">
-              S
+          <div className="flex items-center gap-3 cursor-pointer" onClick={(e) => handleScroll(e, 'inicio')}>
+            {/* Replaced generic S with School Logo */}
+            <div className="filter drop-shadow-md">
+              <SchoolLogo className="w-12 h-14" />
             </div>
-            <span className="font-display font-bold text-xl tracking-tight text-school-dark">
-              SMART SCHOOL
+            <span className="font-display font-bold text-xl tracking-tight text-school-dark leading-none">
+              SMART<br/><span className="text-school-primary">SCHOOL</span>
             </span>
           </div>
           
@@ -299,6 +343,7 @@ const App: React.FC = () => {
               </button>
               <h3 className="text-xl font-bold mb-4 text-school-dark">Escanea para compartir</h3>
               <div className="bg-school-light p-4 rounded-xl mb-4 inline-block border border-school-secondary/20">
+                 {/* This is the referenced QR code image */}
                  <img src="img/qrsmartschool.png" alt="QR Code" className="w-32 h-32 mx-auto" />
               </div>
               <p className="text-slate-500 text-sm">Visita nuestra web desde tu móvil</p>
@@ -470,13 +515,36 @@ const App: React.FC = () => {
                     </div>
                  </div>
               </div>
-              <div className="h-80 bg-white/5 rounded-xl overflow-hidden border border-white/10 flex items-center justify-center relative group">
-                  <img src="img/mapasmartschool.png" alt="Mapa" className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity" />
-                  <div className="relative z-10 bg-school-dark/80 p-4 rounded-lg backdrop-blur-sm text-center border border-school-accent/30">
-                      <MapPin size={32} className="mx-auto mb-2 text-school-accent"/>
-                      <span className="font-bold text-white">Ver en Google Maps</span>
+              
+              {/* Clickable Map Card */}
+              <a 
+                href="https://maps.app.goo.gl/2XYnz3SmcVyKLLAMA"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="h-80 bg-white/5 rounded-xl overflow-hidden border border-white/10 flex items-center justify-center relative group cursor-pointer hover:border-school-accent/50 transition-all shadow-xl hover:shadow-school-accent/10"
+              >
+                  {/* Map Image */}
+                  <img 
+                    src="img/mapasmartschool.png" 
+                    alt="Mapa de Ubicación Smart School" 
+                    className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700" 
+                  />
+                  
+                  {/* Gradient Overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-school-dark via-school-dark/40 to-transparent opacity-90 group-hover:opacity-60 transition-opacity duration-500"></div>
+
+                  {/* Centered Content */}
+                  <div className="relative z-10 bg-school-dark/80 p-5 rounded-2xl backdrop-blur-md text-center border border-school-accent/30 shadow-2xl group-hover:-translate-y-2 group-hover:bg-school-primary/90 transition-all duration-300">
+                      <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center mx-auto mb-3 border border-white/20">
+                         <MapPin size={24} className="text-school-accent"/>
+                      </div>
+                      <span className="font-bold text-white text-lg block flex items-center justify-center gap-2">
+                         Ver en Google Maps
+                         <ExternalLink size={14} className="opacity-70"/>
+                      </span>
+                      <span className="text-xs text-school-secondary uppercase tracking-wider font-semibold mt-1 block">San Ramón - Chanchamayo</span>
                   </div>
-              </div>
+              </a>
            </div>
         </section>
       </main>

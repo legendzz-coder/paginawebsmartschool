@@ -43,33 +43,40 @@ export const VirtualAssistant: React.FC<VirtualAssistantProps> = ({
   
   const getInitialMessage = (): Message => {
     if (context === 'dashboard') {
+      // --- ADMINISTRATOR OPTIONS ---
       if (userRole === 'admin') {
           return {
              id: 1,
-             text: `Hola Administrador ${userName}. Selecciona una herramienta de gestión para comenzar:`,
+             text: `Hola Administrador ${userName}. Tienes acceso total al sistema. Selecciona una opción para recibir instrucciones:`,
              sender: 'bot',
              options: [
                 { label: "Gestión Estudiantes", action: "AdminStudents" },
                 { label: "Gestión Docentes", action: "AdminTeachers" },
-                { label: "Cuentas", action: "AdminAccounts" },
+                { label: "Gestión Cuentas", action: "AdminAccounts" },
                 { label: "Control Horarios", action: "AdminSchedules" },
                 { label: "Control Asistencia", action: "AdminAttendance" }
              ]
           };
       }
 
+      // --- TEACHER OPTIONS (Specific Request) ---
+      // Schedules, Attendance (My), Student Attendance, Profiles, Messages, Profile
       return {
         id: 1,
-        text: `Hola ${userName}, soy Robi. Estoy aquí para ayudarte con tu gestión escolar. ¿Qué deseas hacer?`,
+        text: `Hola Colega ${userName}. Aquí están tus herramientas docentes. Selecciona una para ir a la sección y ver instrucciones:`,
         sender: 'bot',
         options: [
-          { label: "Ver Horarios", action: "Navegar Horarios" },
-          { label: "Asistencia Alumnos", action: "Navegar Asistencia" },
-          { label: "Mensajes", action: "Navegar Mensajes" },
-          { label: "Ayuda", action: "Ayuda Dashboard" }
+          { label: "Ver Horarios", action: "TeacherSchedules" },
+          { label: "Mi Asistencia", action: "TeacherMyAttendance" },
+          { label: "Asistencia Alumnos", action: "TeacherStudentAttendance" },
+          { label: "Perfiles Escolares", action: "TeacherProfiles" },
+          { label: "Mensajes", action: "TeacherMessages" },
+          { label: "Mi Perfil", action: "TeacherProfile" }
         ]
       };
     }
+
+    // --- PUBLIC LANDING PAGE OPTIONS ---
     return {
       id: 1,
       text: "¡Hola! Soy Robi, tu asistente escolar virtual. ¿Necesitas ayuda?",
@@ -209,69 +216,77 @@ export const VirtualAssistant: React.FC<VirtualAssistantProps> = ({
 
     // --- DASHBOARD SPECIFIC LOGIC ---
     if (context === 'dashboard') {
-      // Navigation Intents using inclusive matching for plurals (horario vs horarios)
-      if (lower.match(/horario|clase|curso|materia/)) {
+      // Navigation Intents
+      if (lower.match(/horario|clase/)) {
         return {
-          response: "Te llevo a la sección de Horarios. Aquí podrás ver las clases programadas por aula.",
+          response: "Navegando a Horarios. Aquí verás tu carga académica.",
           options: [],
-          command: "NAV_SCHEDULES"
+          command: "TeacherSchedules" 
         };
       }
-      if (lower.match(/asistencia|falta|tardanza|lista/)) {
+      if (lower.match(/asistencia alumno|tomar lista|pasar lista/)) {
         return {
-          response: "Abriendo el registro de Asistencia de Alumnos. Recuerda guardar los cambios.",
+          response: "Abriendo Asistencia de Alumnos. Recuerda guardar los cambios.",
           options: [],
-          command: "NAV_ATTENDANCE"
+          command: "TeacherStudentAttendance"
         };
       }
-      if (lower.match(/mensaje|chat|conversar|hablar|escribir/)) {
+      if (lower.match(/mi asistencia|marcar entrada|marcar salida/)) {
         return {
-          response: "Abriendo el Chat Global para que te comuniques con tus colegas.",
+          response: "Yendo a 'Mi Asistencia'. Aquí registras tus horas laborales.",
           options: [],
-          command: "NAV_MESSAGES"
+          command: "TeacherMyAttendance"
         };
       }
-      if (lower.match(/perfil|cuenta|clave|password|foto|usuario|configurar/)) {
+      if (lower.match(/perfil escolar|biografia|datos alumno/)) {
         return {
-          response: "Vamos a tu Perfil. Aquí puedes actualizar tu foto y contraseña.",
+          response: "Abriendo Perfiles Escolares. Aquí puedes ver la información de los estudiantes.",
           options: [],
-          command: "NAV_PROFILE"
+          command: "TeacherProfiles"
         };
       }
-      if (lower.match(/ayuda|soporte|hacer|instrucciones|guia|como/)) {
+      if (lower.match(/mensaje|chat|conversar/)) {
         return {
-          response: "Desde el menú lateral puedes acceder a:\n• Ver Horarios: Consulta tu carga horaria.\n• Asistencia Alumnos: Marca presentes o faltas.\n• Mensajes: Chat con administración.\n• Perfil: Tus datos personales.",
-          options: [
-             { label: "Ir a Horarios", action: "Navegar Horarios" },
-             { label: "Ir a Asistencia", action: "Navegar Asistencia" }
-          ]
+          response: "Abriendo el Chat Global.",
+          options: [],
+          command: "TeacherMessages"
+        };
+      }
+      if (lower.match(/mi perfil|mi cuenta|cambiar clave/)) {
+        return {
+          response: "Vamos a tu Perfil Personal.",
+          options: [],
+          command: "TeacherProfile"
         };
       }
       
       // Greeting in dashboard
       if (lower.match(/hola|buenos|buenas/)) {
         return {
-           response: `¡Hola de nuevo ${userName}! ¿En qué sección quieres trabajar hoy?`,
-           options: [
-              { label: "Horarios", action: "Navegar Horarios" },
-              { label: "Asistencia", action: "Navegar Asistencia" },
-              { label: "Mensajes", action: "Navegar Mensajes" }
-           ]
+           response: `¡Hola de nuevo ${userName}! ¿En qué te ayudo hoy?`,
+           options: userRole === 'admin' 
+             ? [
+                { label: "Gestión Estudiantes", action: "AdminStudents" },
+                { label: "Control Asistencia", action: "AdminAttendance" }
+             ]
+             : [
+                { label: "Ver Horarios", action: "TeacherSchedules" },
+                { label: "Asistencia Alumnos", action: "TeacherStudentAttendance" }
+             ]
         };
       }
 
       // Fallback Dashboard
       return {
-        response: "Puedo llevarte a cualquier sección: Horarios, Asistencia, Mensajes o Perfil. ¿A dónde vamos?",
-        options: [
-          { label: "Horarios", action: "Navegar Horarios" },
-          { label: "Asistencia", action: "Navegar Asistencia" },
-          { label: "Mensajes", action: "Navegar Mensajes" }
-        ]
+        response: "Entendido. ¿Deseas ir a alguna sección específica?",
+        options: userRole === 'admin'
+           ? [{ label: "Ir a Inicio", action: "DashboardHome" }]
+           : [{ label: "Ver Horarios", action: "TeacherSchedules" }, { label: "Mis Mensajes", action: "TeacherMessages" }]
       };
     }
 
     // --- PUBLIC (LANDING PAGE) LOGIC ---
+    // (Kept same as before for consistency)
 
     // Login Intent (Specific Command)
     if (lower.match(/ir (al|a) login|abrir login|iniciar sesion|quiero entrar/)) {
@@ -421,7 +436,6 @@ export const VirtualAssistant: React.FC<VirtualAssistantProps> = ({
 
   const handleOptionClick = (label: string, action: string) => {
     // User creates a message by clicking logic
-    // Display the LABEL (Spanish) as the user text instead of the Action Code
     const userMsg: Message = { id: Date.now(), text: label, sender: 'user' };
     setMessages(prev => [...prev, userMsg]);
     setIsTyping(true);
@@ -431,103 +445,101 @@ export const VirtualAssistant: React.FC<VirtualAssistantProps> = ({
       
       // Handle predefined actions
       switch(action) {
-        // --- ADMIN DASHBOARD ACTIONS ---
+        // ==========================================
+        //       ADMINISTRATOR ACTIONS & HELP
+        // ==========================================
         case "AdminStudents":
            if (onNavigate) onNavigate('manage-students');
            result = { 
-             response: "Abriendo Gestión de Estudiantes. Aquí puedes matricular nuevos alumnos o editar la base de datos. ¿Necesitas ayuda con esta sección?", 
-             options: [{label: "Sí, guíame", action: "HelpStudents"}, {label: "No, gracias", action: "CloseHelp"}]
+             response: "Abriendo Gestión de Estudiantes. INSTRUCCIÓN: Usa el formulario izquierdo para matricular nuevos alumnos y asignar sus padres. Usa la tabla derecha para buscar o eliminar.", 
+             options: [{label: "Entendido", action: "CloseHelp"}]
            };
            break;
         case "AdminTeachers":
            if (onNavigate) onNavigate('manage-teachers');
            result = { 
-             response: "Mostrando Gestión de Docentes. Puedes registrar profesores y asignarles aulas o cursos. ¿Deseas instrucciones?", 
-             options: [{label: "Sí, instrucciones", action: "HelpTeachers"}, {label: "No, gracias", action: "CloseHelp"}]
+             response: "Mostrando Gestión de Docentes. INSTRUCCIÓN: Registra profesores aquí. IMPORTANTE: Elige 'Tutor' si el docente tendrá un aula a cargo para marcar asistencia.", 
+             options: [{label: "Entendido", action: "CloseHelp"}]
            };
            break;
         case "AdminAccounts":
            if (onNavigate) onNavigate('manage-accounts');
            result = { 
-             response: "Accediendo a Gestión de Cuentas. Aquí administras usuarios y contraseñas. ¿Necesitas ayuda?", 
-             options: [{label: "Sí, explicar", action: "HelpAccounts"}, {label: "No, gracias", action: "CloseHelp"}]
+             response: "Accediendo a Gestión de Cuentas. INSTRUCCIÓN: Aquí creas los Usuarios y Contraseñas para que el personal pueda ingresar al sistema.", 
+             options: [{label: "Entendido", action: "CloseHelp"}]
            };
            break;
         case "AdminSchedules":
            if (onNavigate) onNavigate('schedule-control');
            result = { 
-             response: "Esta es la sección de Control de Horarios. Define los cursos por día y hora. ¿Quieres saber cómo funciona?", 
-             options: [{label: "Sí, dime cómo", action: "HelpSchedules"}, {label: "No, gracias", action: "CloseHelp"}]
+             response: "Sección Control de Horarios. INSTRUCCIÓN: Define curso, día, hora y docente. Esto actualizará automáticamente la vista de horarios de los profesores.", 
+             options: [{label: "Entendido", action: "CloseHelp"}]
            };
            break;
         case "AdminAttendance":
            if (onNavigate) onNavigate('attendance-control');
            result = { 
-             response: "Panel de Control de Asistencias. Registra la puntualidad del personal docente. ¿Ayuda?", 
-             options: [{label: "Sí, ayuda", action: "HelpAttendance"}, {label: "No, gracias", action: "CloseHelp"}]
-           };
-           break;
-        
-        // --- ADMIN HELP RESPONSES ---
-        case "HelpStudents":
-           result = {
-             response: "Para registrar un alumno: 1. Completa el formulario de la izquierda con sus datos y padres. 2. Selecciona el Grado. 3. Presiona 'Registrar Alumno'. Para eliminar, usa el botón rojo en la lista de la derecha.",
+             response: "Panel de Control de Asistencia Docente. INSTRUCCIÓN: Registra manualmente la hora de entrada/salida de los profesores y marca si llegaron tarde o faltaron.", 
              options: [{label: "Entendido", action: "CloseHelp"}]
            };
-           break;
-        case "HelpTeachers":
-           result = {
-             response: "Usa el formulario para crear docentes. IMPORTANTE: Define si es 'Tutor de Aula' (puede marcar asistencia) o 'Docente de Curso'. Asigna el aula correspondiente si es tutor.",
-             options: [{label: "Entendido", action: "CloseHelp"}]
-           };
-           break;
-        case "HelpAccounts":
-           result = {
-             response: "Aquí creas las credenciales de acceso (Usuario/Clave). El rol 'Admin' ve todo. El rol 'Docente' ve solo lo asignado. Si un docente olvida su clave, puedes borrar la cuenta y crearla de nuevo.",
-             options: [{label: "Entendido", action: "CloseHelp"}]
-           };
-           break;
-        case "HelpSchedules":
-           result = {
-             response: "Para agregar una clase: 1. Escribe el nombre del curso. 2. Elige Día, Grado y Docente. 3. Define Hora Inicio y Fin. 4. Clic en 'Agregar Curso'. Aparecerá en la tabla inferior.",
-             options: [{label: "Entendido", action: "CloseHelp"}]
-           };
-           break;
-        case "HelpAttendance":
-           result = {
-             response: "Busca al docente en la lista. Ingresa manualmente su hora de entrada y salida. Cambia el estado a Puntual, Tarde o Falta y presiona el icono de Guardar (Diskette).",
-             options: [{label: "Entendido", action: "CloseHelp"}]
-           };
-           break;
-        case "CloseHelp":
-           result = { response: "Perfecto. Si necesitas algo más, aquí estaré.", options: [] };
            break;
 
-        // --- TEACHER / GENERAL DASHBOARD ACTIONS ---
-        case "Navegar Horarios":
+        // ==========================================
+        //       TEACHER ACTIONS & HELP
+        // ==========================================
+        case "TeacherSchedules":
            if (onNavigate) onNavigate('view-schedules');
-           result = { response: "Listo, mostrando horarios.", options: [] };
+           result = { 
+             response: "Mostrando tus Horarios. INSTRUCCIÓN: Aquí visualizas tu carga académica semanal por aula. Usa el filtro superior para cambiar de grado.",
+             options: [{label: "Gracias", action: "CloseHelp"}]
+           };
            break;
-        case "Navegar Asistencia":
+        case "TeacherMyAttendance":
+           if (onNavigate) onNavigate('my-attendance');
+           result = { 
+             response: "Sección 'Mi Asistencia'. INSTRUCCIÓN: Aquí puedes verificar tus registros de entrada y salida ingresados por la administración.",
+             options: [{label: "Entendido", action: "CloseHelp"}]
+           };
+           break;
+        case "TeacherStudentAttendance":
            if (onNavigate) onNavigate('student-attendance');
-           result = { response: "Sección de asistencia abierta.", options: [] };
+           result = { 
+             response: "Abriendo Asistencia de Alumnos. INSTRUCCIÓN: Si eres Tutor, usa los botones (Verde=Presente, Amarillo=Tarde, Rojo=Falta) para registrar. Si eres docente de curso, solo puedes ver la lista.",
+             options: [{label: "Entendido", action: "CloseHelp"}]
+           };
            break;
-        case "Navegar Mensajes":
+        case "TeacherProfiles":
+           if (onNavigate) onNavigate('school-profiles');
+           result = { 
+             response: "Cargando Perfiles Escolares. INSTRUCCIÓN: Usa el buscador para encontrar un alumno y ver su ficha biográfica (padres, DNI, etc).",
+             options: [{label: "Entendido", action: "CloseHelp"}]
+           };
+           break;
+        case "TeacherMessages":
            if (onNavigate) onNavigate('messages');
-           result = { response: "Abriendo chat global.", options: [] };
+           result = { 
+             response: "Abriendo Chat Global. INSTRUCCIÓN: Usa este espacio para comunicarte con la dirección y otros colegas en tiempo real.",
+             options: [{label: "Entendido", action: "CloseHelp"}]
+           };
            break;
-        case "Navegar Perfil":
+        case "TeacherProfile":
            if (onNavigate) onNavigate('profile');
-           result = { response: "Mostrando tu perfil.", options: [] };
-           break;
-        case "Ayuda Dashboard":
-           result = {
-             response: "Usa los botones del menú lateral para navegar. Si eres tutor, puedes marcar asistencia. Si eres docente de curso, solo puedes verla.",
-             options: []
+           result = { 
+             response: "Tu Perfil Personal. INSTRUCCIÓN: Aquí puedes actualizar tu nombre mostrado, cambiar tu contraseña y foto de perfil.",
+             options: [{label: "Entendido", action: "CloseHelp"}]
            };
            break;
 
-        // --- PUBLIC ACTIONS ---
+        // --- GENERAL CLOSING ---
+        case "CloseHelp":
+           result = { response: "Perfecto. Si necesitas navegar a otra sección, solo dímelo.", options: [] };
+           break;
+        case "DashboardHome":
+           if (onNavigate) onNavigate('dashboard');
+           result = { response: "Volviendo al inicio del panel.", options: [] };
+           break;
+
+        // --- PUBLIC ACTIONS (Keeping existing logic) ---
         case "Inicio de Sesión":
           document.querySelector('nav')?.scrollIntoView({ behavior: 'smooth' });
           result = { 
@@ -615,7 +627,6 @@ export const VirtualAssistant: React.FC<VirtualAssistantProps> = ({
                  ]
              };
              break;
-        // For roles defined in processMessage fallback options
         case "Soy Docente":
         case "Soy Alumno":
         case "Soy Padre":
@@ -623,6 +634,17 @@ export const VirtualAssistant: React.FC<VirtualAssistantProps> = ({
           break;
         default:
           result = processMessage(action);
+          // Check if processMessage returned a command
+          if (result.command === 'TeacherSchedules') { handleOptionClick("Ver Horarios", "TeacherSchedules"); return; }
+          if (result.command === 'TeacherStudentAttendance') { handleOptionClick("Asistencia Alumnos", "TeacherStudentAttendance"); return; }
+          if (result.command === 'TeacherMyAttendance') { handleOptionClick("Mi Asistencia", "TeacherMyAttendance"); return; }
+          if (result.command === 'TeacherProfiles') { handleOptionClick("Perfiles Escolares", "TeacherProfiles"); return; }
+          if (result.command === 'TeacherMessages') { handleOptionClick("Mensajes", "TeacherMessages"); return; }
+          if (result.command === 'TeacherProfile') { handleOptionClick("Mi Perfil", "TeacherProfile"); return; }
+          
+          if (result.command === 'AdminStudents') { handleOptionClick("Gestión Estudiantes", "AdminStudents"); return; }
+          if (result.command === 'AdminTeachers') { handleOptionClick("Gestión Docentes", "AdminTeachers"); return; }
+          // ... (add other admin commands mapping if needed)
       }
 
       setMessages(prev => [...prev, { 
@@ -658,15 +680,38 @@ export const VirtualAssistant: React.FC<VirtualAssistantProps> = ({
     setTimeout(() => {
       const result = processMessage(text);
       
-      // Handle Action Commands
-      if (result.command === 'OPEN_LOGIN' && onOpenLogin) {
-        onOpenLogin();
+      // Handle Action Commands (Shortcuts)
+      if (result.command === 'OPEN_LOGIN' && onOpenLogin) onOpenLogin();
+      
+      // If we have a specific teacher/admin command from NLP, route it through handleOptionClick for consistent response
+      if (result.command && result.command.startsWith('Teacher')) {
+         // Map command to label for visual consistency
+         const labelMap: any = {
+           'TeacherSchedules': 'Ver Horarios',
+           'TeacherStudentAttendance': 'Asistencia Alumnos',
+           'TeacherMyAttendance': 'Mi Asistencia',
+           'TeacherProfiles': 'Perfiles Escolares',
+           'TeacherMessages': 'Mensajes',
+           'TeacherProfile': 'Mi Perfil'
+         };
+         handleOptionClick(labelMap[result.command] || text, result.command);
+         return; 
       }
-      if (result.command === 'NAV_SCHEDULES' && onNavigate) onNavigate('view-schedules');
-      if (result.command === 'NAV_ATTENDANCE' && onNavigate) onNavigate('student-attendance');
-      if (result.command === 'NAV_MESSAGES' && onNavigate) onNavigate('messages');
-      if (result.command === 'NAV_PROFILE' && onNavigate) onNavigate('profile');
 
+      if (result.command && result.command.startsWith('Admin')) {
+          // Map command to label
+          const labelMap: any = {
+            'AdminStudents': 'Gestión Estudiantes',
+            'AdminTeachers': 'Gestión Docentes',
+            'AdminAccounts': 'Gestión Cuentas',
+            'AdminSchedules': 'Control Horarios',
+            'AdminAttendance': 'Control Asistencia'
+          };
+          handleOptionClick(labelMap[result.command] || text, result.command);
+          return;
+      }
+      
+      // Standard Response
       setMessages(prev => [...prev, { 
         id: Date.now() + 1, 
         text: result.response, 

@@ -76,5 +76,5 @@ export interface UserAccount {
   name: string;
   role: 'admin' | 'docente';
   teacherType?: 'tutor' | 'course';
-  photoUrl?: string;
+  profileColor?: string; // Hex code or Tailwind class for avatar background
 }

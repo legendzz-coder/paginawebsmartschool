@@ -1,3 +1,4 @@
+
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -5,7 +6,7 @@
 
 import React, { useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { Float, MeshDistortMaterial, Sphere, Box, Torus, Icosahedron, Environment } from '@react-three/drei';
+import { Float, MeshDistortMaterial, Sphere, Box, Torus, Icosahedron } from '@react-three/drei';
 import * as THREE from 'three';
 
 // Fix: Extend JSX.IntrinsicElements to include R3F elements and standard HTML elements
@@ -54,24 +55,22 @@ export const SchoolHeroScene: React.FC = () => {
     <div className="w-full h-full absolute inset-0 overflow-hidden">
       <Canvas camera={{ position: [0, 0, 8], fov: 40 }}>
         <ambientLight intensity={0.8} />
-        <pointLight position={[10, 10, 10]} intensity={1.5} color="#7c3aed" /> {/* Purple Light */}
-        <pointLight position={[-10, -5, -5]} intensity={1} color="#fbbf24" /> {/* Gold Light */}
+        <pointLight position={[10, 10, 10]} intensity={1.5} color="#0EA5E9" /> {/* Light Blue Light */}
+        <pointLight position={[-10, -5, -5]} intensity={1} color="#E8C872" /> {/* Gold Light */}
         
         {/* Floating Abstract "Knowledge" Objects */}
         <Float speed={2} rotationIntensity={0.5} floatIntensity={1}>
-           {/* Purple Sphere - Main */}
-           <FloatingShape position={[3, 1, -2]} color="#7c3aed" scale={1.2} type="sphere" speed={1} />
+           {/* Light Blue Sphere - Main */}
+           <FloatingShape position={[3, 1, -2]} color="#0EA5E9" scale={1.2} type="sphere" speed={1} />
            {/* Gold Cube - Structure */}
-           <FloatingShape position={[-3, -1, -1]} color="#fbbf24" scale={1} type="box" speed={0.8} />
-           {/* Light Blue Shape - Innovation */}
-           <FloatingShape position={[0, 2, -4]} color="#0ea5e9" scale={0.9} type="ico" speed={1.2} />
-           {/* Darker Purple Ring - Community */}
-           <FloatingShape position={[-2, 2, 1]} color="#4c1d95" scale={0.6} type="torus" speed={0.5} />
+           <FloatingShape position={[-3, -1, -1]} color="#E8C872" scale={1} type="box" speed={0.8} />
+           {/* Lighter Sky Blue Shape - Innovation */}
+           <FloatingShape position={[0, 2, -4]} color="#7DD3FC" scale={0.9} type="ico" speed={1.2} />
+           {/* Darker Sky Ring - Community */}
+           <FloatingShape position={[-2, 2, 1]} color="#0369A1" scale={0.6} type="torus" speed={0.5} />
            {/* Small Gold Accents */}
-           <FloatingShape position={[4, -2, -3]} color="#f59e0b" scale={0.4} type="sphere" speed={1.5} />
+           <FloatingShape position={[4, -2, -3]} color="#D4AF37" scale={0.4} type="sphere" speed={1.5} />
         </Float>
-
-        <Environment preset="city" />
       </Canvas>
     </div>
   );

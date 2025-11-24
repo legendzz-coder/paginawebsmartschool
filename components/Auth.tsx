@@ -11,7 +11,7 @@ import { UserAccount } from '../types';
 
 interface LoginModalProps {
   onClose: () => void;
-  onLogin: (user: {name: string, role: string, teacherType?: 'tutor' | 'course', username: string, photoUrl?: string}) => void;
+  onLogin: (user: {name: string, role: string, teacherType?: 'tutor' | 'course', username: string, profileColor?: string}) => void;
   accounts: UserAccount[];
 }
 
@@ -36,7 +36,7 @@ export const LoginModal = ({ onClose, onLogin, accounts }: LoginModalProps) => {
           role: foundUser.role, 
           teacherType: foundUser.teacherType,
           username: foundUser.username,
-          photoUrl: foundUser.photoUrl
+          profileColor: foundUser.profileColor
         });
         onClose();
       }, 1500);

@@ -6,6 +6,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
+import { SchoolLogo } from './SchoolLogo';
 
 export const WelcomeSplash: React.FC = () => {
   return (
@@ -25,9 +26,10 @@ export const WelcomeSplash: React.FC = () => {
             initial={{ scale: 0, rotate: -180 }}
             animate={{ scale: 1, rotate: 0 }}
             transition={{ type: "spring", stiffness: 260, damping: 20, duration: 1.5 }}
-            className="w-32 h-32 bg-white rounded-3xl mx-auto mb-8 flex items-center justify-center shadow-2xl shadow-school-primary/50"
+            className="flex items-center justify-center mb-8 drop-shadow-[0_20px_20px_rgba(0,0,0,0.5)]"
           >
-             <span className="text-school-primary font-display font-bold text-6xl">S</span>
+             {/* New Shield Logo instead of 'S' box */}
+             <SchoolLogo className="w-40 h-48" />
           </motion.div>
 
           <motion.h1 

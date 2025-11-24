@@ -1,4 +1,3 @@
-
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -10,15 +9,15 @@ import {
   Settings, Search, Plus, Trash2, 
   CheckCircle, XCircle, Clock, 
   CalendarRange, Timer, ClipboardCheck, Save,
-  ArrowLeft, AlertCircle, MessageSquare, FileText, Send, UserCheck, Camera, Edit3, UserCog
+  ArrowLeft, AlertCircle, MessageSquare, FileText, Send, UserCheck, Edit3, UserCog, Palette, School, X, ChevronRight, Upload, Bell
 } from 'lucide-react';
 import { VirtualAssistant } from './VirtualAssistant';
 import { Student, Teacher, ScheduleItem, TeacherAttendance, ChatMessage, UserAccount } from '../types';
 
 interface DashboardProps {
-  user: { name: string; role: string; username?: string; photoUrl?: string; teacherType?: 'tutor' | 'course' };
+  user: { name: string; role: string; username?: string; profileColor?: string; teacherType?: 'tutor' | 'course' };
   onLogout: () => void;
-  onUpdateUser: (data: { name?: string; username?: string; photoUrl?: string }) => void;
+  onUpdateUser: (data: { name?: string; username?: string; profileColor?: string; newPassword?: string }) => void;
   students: Student[];
   setStudents: React.Dispatch<React.SetStateAction<Student[]>>;
   teachers: Teacher[];
@@ -43,6 +42,17 @@ const CLASSROOMS = [
   "1ro y 2do Secundaria",
   "3ro Secundaria",
   "4to Secundaria"
+];
+
+const PROFILE_COLORS = [
+    '#0EA5E9', // Blue
+    '#EAB308', // Yellow/Gold
+    '#EF4444', // Red
+    '#22C55E', // Green
+    '#A855F7', // Purple
+    '#EC4899', // Pink
+    '#64748B', // Slate
+    '#F97316'  // Orange
 ];
 
 export const Dashboard: React.FC<DashboardProps> = ({ 
@@ -75,7 +85,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [profileForm, setProfileForm] = useState({
     name: user.name,
     username: user.username || user.name.split(' ')[0],
-    photoUrl: user.photoUrl || '',
+    profileColor: user.profileColor || '#0EA5E9',
     newPassword: '',
     confirmPassword: ''
   });
@@ -105,6 +115,21 @@ export const Dashboard: React.FC<DashboardProps> = ({
     teacherName: ''
   });
 
+  // Schedule Control States
+  const [editingScheduleGrade, setEditingScheduleGrade] = useState<string | null>(null);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [scheduleSuccessMsg, setScheduleSuccessMsg] = useState('');
+  
+  // Form state for Adding/Editing a specific schedule item
+  const [scheduleForm, setScheduleForm] = useState<Partial<ScheduleItem>>({
+    day: 'Lunes',
+    startTime: '',
+    endTime: '',
+    subject: '',
+    teacherName: ''
+  });
+  const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null); // Null means adding new
+
   // New Account Form State
   const [newAccount, setNewAccount] = useState<Partial<UserAccount>>({
     name: '',
@@ -117,6 +142,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // Chat Input State
   const [chatInput, setChatInput] = useState('');
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
 
   // Temporary state for managing teacher attendance changes
   const [tempTeacherAttendance, setTempTeacherAttendance] = useState<Record<string, Partial<TeacherAttendance>>>({});
@@ -138,18 +164,36 @@ export const Dashboard: React.FC<DashboardProps> = ({
     }
   }, [messages, activeSection]);
 
+  // Notification Logic: Check for new messages
+  useEffect(() => {
+    const lastReadCount = parseInt(localStorage.getItem(`smartschool_last_read_${user.username}`) || '0');
+    if (messages.length > lastReadCount) {
+      setUnreadMessagesCount(messages.length - lastReadCount);
+    } else {
+      setUnreadMessagesCount(0);
+    }
+  }, [messages, user.username]);
+
+  // Mark messages as read when entering the section
+  useEffect(() => {
+    if (activeSection === 'messages') {
+      setUnreadMessagesCount(0);
+      localStorage.setItem(`smartschool_last_read_${user.username}`, messages.length.toString());
+    }
+  }, [activeSection, messages.length, user.username]);
+
   // Reset Profile form when user changes (or on entry)
   useEffect(() => {
     setProfileForm({
       name: user.name,
       username: user.username || user.name.split(' ')[0],
-      photoUrl: user.photoUrl || '',
+      profileColor: user.profileColor || '#0EA5E9',
       newPassword: '',
       confirmPassword: ''
     });
   }, [user]);
 
-  const menuSections: { title: string; items: { id: string; label: string; icon: React.ReactNode; desc: string; role?: string }[] }[] = [
+  const menuSections: { title: string; items: { id: string; label: string; icon: React.ReactNode; desc: string; role?: string; badge?: number }[] }[] = [
     {
       title: 'General',
       items: [
@@ -158,7 +202,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         { id: 'my-attendance', label: 'Mi Asistencia', icon: <Timer size={20} />, desc: 'Registro de entrada y salida' },
         { id: 'student-attendance', label: 'Asistencia Alumnos', icon: <ClipboardCheck size={20} />, desc: 'Registro de asistencia estudiantil' },
         { id: 'school-profiles', label: 'Perfiles Escolares', icon: <FileText size={20} />, desc: 'Biografía y datos de alumnos' },
-        { id: 'messages', label: 'Mensajes', icon: <MessageSquare size={20} />, desc: 'Chat global del personal' },
+        { id: 'messages', label: 'Mensajes', icon: <MessageSquare size={20} />, desc: 'Chat global del personal', badge: unreadMessagesCount },
         { id: 'profile', label: 'Perfil', icon: <Settings size={20} />, desc: 'Configuración de cuenta' },
       ]
     },
@@ -221,7 +265,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
         username: newAccount.username!,
         password: newAccount.password!,
         role: newAccount.role as 'admin' | 'docente' || 'docente',
-        teacherType: newAccount.role === 'docente' ? (newAccount.teacherType as 'tutor' | 'course' || 'course') : undefined
+        teacherType: newAccount.role === 'docente' ? (newAccount.teacherType as 'tutor' | 'course' || 'course') : undefined,
+        profileColor: '#0EA5E9'
       };
       setAccounts([...accounts, account]);
       setNewAccount({ name: '', username: '', password: '', role: 'docente', teacherType: 'course' });
@@ -234,6 +279,64 @@ export const Dashboard: React.FC<DashboardProps> = ({
       setSchedules([...schedules, { ...newSchedule, id: Date.now().toString() }]);
       setNewSchedule({ ...newSchedule, subject: '', startTime: '', endTime: '', teacherName: '' });
     }
+  };
+
+  // --- SCHEDULE CONTROL HANDLERS ---
+  const openAddScheduleModal = () => {
+    setEditingScheduleId(null);
+    setScheduleForm({
+        day: 'Lunes',
+        startTime: '08:00',
+        endTime: '08:45',
+        subject: '',
+        teacherName: ''
+    });
+    setIsScheduleModalOpen(true);
+  };
+
+  const openEditScheduleModal = (item: ScheduleItem) => {
+    setEditingScheduleId(item.id);
+    setScheduleForm({
+        day: item.day,
+        startTime: item.startTime,
+        endTime: item.endTime,
+        subject: item.subject,
+        teacherName: item.teacherName
+    });
+    setIsScheduleModalOpen(true);
+  };
+
+  const handleSaveScheduleItem = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingScheduleGrade || !scheduleForm.subject || !scheduleForm.startTime) return;
+
+    if (editingScheduleId) {
+        // Update existing
+        setSchedules(prev => prev.map(s => s.id === editingScheduleId ? { 
+            ...s, 
+            ...scheduleForm as ScheduleItem, 
+            grade: editingScheduleGrade 
+        } : s));
+    } else {
+        // Add new
+        const newItem: ScheduleItem = {
+            id: Date.now().toString(),
+            grade: editingScheduleGrade,
+            day: scheduleForm.day || 'Lunes',
+            startTime: scheduleForm.startTime || '',
+            endTime: scheduleForm.endTime || '',
+            subject: scheduleForm.subject || '',
+            teacherName: scheduleForm.teacherName
+        };
+        setSchedules(prev => [...prev, newItem]);
+    }
+    setIsScheduleModalOpen(false);
+  };
+
+  const handlePublishSchedules = () => {
+    // Visual feedback simulation
+    setScheduleSuccessMsg(`¡Horario de ${editingScheduleGrade} publicado exitosamente!`);
+    setTimeout(() => setScheduleSuccessMsg(''), 3000);
   };
 
   const handleSendMessage = (e: React.FormEvent) => {
@@ -250,6 +353,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
     setMessages([...messages, newMessage]);
     setChatInput('');
+    
+    // Update my own read count immediately so I don't notify myself
+    localStorage.setItem(`smartschool_last_read_${user.username}`, (messages.length + 1).toString());
+  };
+
+  const handleDeleteMessage = (id: string) => {
+    if (window.confirm("¿Estás seguro de eliminar este mensaje?")) {
+      setMessages(messages.filter(m => m.id !== id));
+    }
   };
 
   const handleDeleteSchedule = (id: string) => {
@@ -282,14 +394,15 @@ export const Dashboard: React.FC<DashboardProps> = ({
       return;
     }
 
-    // Call parent update
+    // Call parent update with new password if provided
     onUpdateUser({
       name: profileForm.name,
       username: profileForm.username,
-      photoUrl: profileForm.photoUrl
+      profileColor: profileForm.profileColor,
+      newPassword: profileForm.newPassword ? profileForm.newPassword : undefined
     });
 
-    setProfileSuccessMsg('Perfil actualizado correctamente');
+    setProfileSuccessMsg('Perfil y credenciales actualizados correctamente');
     setIsEditingProfile(false);
     
     // Clear password fields
@@ -382,10 +495,18 @@ export const Dashboard: React.FC<DashboardProps> = ({
                           : 'border-slate-100 hover:shadow-md hover:border-school-primary/30'
                      }`}
                    >
-                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform ${
-                        isAdminItem ? 'bg-amber-50 text-school-accent' : 'bg-school-light text-school-primary'
-                     }`}>
-                       {item.icon}
+                     <div className="flex justify-between items-start w-full">
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform ${
+                            isAdminItem ? 'bg-amber-50 text-school-accent' : 'bg-school-light text-school-primary'
+                        }`}>
+                          {item.icon}
+                        </div>
+                        {/* Notification Badge in Grid */}
+                        {item.badge ? (
+                           <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full shadow-sm animate-pulse">
+                              {item.badge} nuevos
+                           </span>
+                        ) : null}
                      </div>
                      <h3 className={`font-bold mb-1 ${isAdminItem ? 'text-amber-600' : 'text-school-dark'}`}>{item.label}</h3>
                      <p className="text-xs text-slate-500">{item.desc}</p>
@@ -470,26 +591,54 @@ export const Dashboard: React.FC<DashboardProps> = ({
       case 'messages':
         return (
            <div className="h-[calc(100vh-140px)] flex flex-col bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-              <div className="p-6 border-b border-slate-100 bg-white">
-                 <h2 className="text-xl font-display font-bold text-school-dark flex items-center gap-2">
-                    <MessageSquare className="text-school-primary" />
-                    Chat Global del Personal
-                 </h2>
-                 <p className="text-slate-500 text-sm">Comunicación interna para docentes y administrativos</p>
+              <div className="p-6 border-b border-slate-100 bg-white flex justify-between items-center">
+                 <div>
+                    <h2 className="text-xl font-display font-bold text-school-dark flex items-center gap-2">
+                        <MessageSquare className="text-school-primary" />
+                        Chat Global del Personal
+                    </h2>
+                    <p className="text-slate-500 text-sm">Comunicación interna para docentes y administrativos</p>
+                 </div>
+                 {/* Simple indicator for live status */}
+                 <div className="flex items-center gap-2 text-xs font-bold text-green-500 bg-green-50 px-3 py-1 rounded-full">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    En línea
+                 </div>
               </div>
               
               <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-slate-50">
                  {messages.map((msg) => {
                     const isMe = msg.sender === user.name;
+                    // Find account to get color
+                    const senderAccount = accounts.find(acc => acc.name === msg.sender);
+                    // Logic: If me, use my current session color. If other, use account color. If not found, gray.
+                    const avatarBg = isMe 
+                        ? (user.profileColor || '#0EA5E9') 
+                        : (senderAccount?.profileColor || '#64748b');
+
                     return (
                        <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
                           <div className={`flex items-end gap-2 max-w-[80%] ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
-                             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${isMe ? 'bg-school-primary text-white' : 'bg-slate-200 text-slate-600'}`}>
+                             <div 
+                                className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0 text-white shadow-sm"
+                                style={{ backgroundColor: avatarBg }}
+                             >
                                 {msg.sender.charAt(0)}
                              </div>
-                             <div className={`p-4 rounded-2xl text-sm ${isMe ? 'bg-school-primary text-white rounded-br-none' : 'bg-white border border-slate-100 text-slate-700 rounded-bl-none shadow-sm'}`}>
+                             <div className={`p-4 rounded-2xl text-sm relative group ${isMe ? 'bg-school-primary text-white rounded-br-none' : 'bg-white border border-slate-100 text-slate-700 rounded-bl-none shadow-sm'}`}>
                                 {!isMe && <p className="text-xs font-bold text-school-secondary mb-1">{msg.sender} <span className="text-slate-400 font-normal opacity-75">- {msg.role}</span></p>}
                                 <p>{msg.content}</p>
+                                
+                                {/* ADMIN DELETE ACTION */}
+                                {user.role === 'admin' && (
+                                   <button 
+                                      onClick={() => handleDeleteMessage(msg.id)}
+                                      className="absolute -top-2 -right-2 bg-white text-red-500 p-1 rounded-full shadow-md border border-slate-200 opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110"
+                                      title="Eliminar mensaje"
+                                   >
+                                      <Trash2 size={12} />
+                                   </button>
+                                )}
                              </div>
                           </div>
                           <span className="text-[10px] text-slate-400 mt-1 px-2">
@@ -529,21 +678,44 @@ export const Dashboard: React.FC<DashboardProps> = ({
         
         return (
           <div className="space-y-6">
-            <div className="flex flex-wrap items-center justify-between gap-4 bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-               <div>
-                 <h2 className="text-xl font-display font-bold text-school-dark">Horarios de Clase</h2>
-                 <p className="text-slate-500 text-sm">Vista semanal de cursos</p>
-               </div>
-               <div className="flex gap-4">
-                  <select value={viewGrade} onChange={e => setViewGrade(e.target.value)} className="bg-school-light border-none rounded-lg px-4 py-2 text-sm font-semibold text-school-dark outline-none focus:ring-2 focus:ring-school-primary">
-                    {CLASSROOMS.map(c => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
-               </div>
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+               <h2 className="text-xl font-display font-bold text-school-dark">Horarios de Clase</h2>
+               <p className="text-slate-500 text-sm">Selecciona un aula para ver el horario</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            {/* Replaced Select with Grid View */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {CLASSROOMS.map(classroom => {
+                const isSelected = viewGrade === classroom;
+                const count = schedules.filter(s => s.grade === classroom).length;
+                return (
+                  <button
+                    key={classroom}
+                    onClick={() => setViewGrade(classroom)}
+                    className={`p-4 rounded-xl border transition-all text-left relative group ${
+                      isSelected 
+                        ? 'bg-school-primary text-white border-school-dark shadow-md ring-2 ring-school-secondary ring-offset-2' 
+                        : 'bg-white border-slate-200 text-slate-600 hover:border-school-primary hover:shadow-sm'
+                    }`}
+                  >
+                    <div className={`mb-3 w-10 h-10 rounded-full flex items-center justify-center ${isSelected ? 'bg-white/20' : 'bg-slate-100 text-slate-400 group-hover:text-school-primary group-hover:bg-school-light'}`}>
+                       <School size={20} />
+                    </div>
+                    <span className="block font-bold text-sm mb-1">{classroom}</span>
+                    <span className={`text-xs ${isSelected ? 'text-white/80' : 'text-slate-400'}`}>
+                       {count} clases registradas
+                    </span>
+                    {isSelected && (
+                      <div className="absolute top-3 right-3">
+                         <CheckCircle size={16} className="text-white" />
+                      </div>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mt-4">
               {days.map(day => (
                 <div key={day} className="space-y-3">
                   <div className="bg-school-primary text-white text-center py-2 rounded-lg font-bold text-sm shadow-sm">
@@ -743,17 +915,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
                   {/* Avatar Display */}
                   <div className="relative w-24 h-24 mx-auto mb-4">
-                     {user.photoUrl ? (
-                       <img 
-                         src={user.photoUrl} 
-                         alt={user.name} 
-                         className="w-24 h-24 rounded-full object-cover shadow-lg ring-4 ring-school-light"
-                       />
-                     ) : (
-                       <div className="w-24 h-24 bg-school-primary rounded-full flex items-center justify-center text-white text-3xl font-bold shadow-lg ring-4 ring-school-light">
-                          {user.name.charAt(0)}
-                       </div>
-                     )}
+                     <div 
+                        className="w-24 h-24 rounded-full flex items-center justify-center text-white text-3xl font-bold shadow-lg ring-4 ring-school-light"
+                        style={{ backgroundColor: user.profileColor || '#0EA5E9' }}
+                     >
+                        {user.name.charAt(0)}
+                     </div>
                   </div>
 
                   {isEditingProfile ? (
@@ -781,16 +948,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         </div>
 
                         <div>
-                           <label className="text-xs text-slate-400 uppercase font-bold mb-1 block">URL de Foto de Perfil</label>
-                           <div className="relative">
-                             <Camera className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16}/>
-                             <input 
-                               type="text" 
-                               value={profileForm.photoUrl}
-                               onChange={(e) => setProfileForm({...profileForm, photoUrl: e.target.value})}
-                               placeholder="https://ejemplo.com/foto.jpg"
-                               className="w-full pl-10 p-3 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:border-school-primary text-sm"
-                             />
+                           <label className="text-xs text-slate-400 uppercase font-bold mb-1 block">Color de Perfil</label>
+                           <div className="flex flex-wrap gap-3">
+                              {PROFILE_COLORS.map(color => (
+                                 <button
+                                   key={color}
+                                   type="button"
+                                   onClick={() => setProfileForm({...profileForm, profileColor: color})}
+                                   className={`w-10 h-10 rounded-full border-2 transition-all ${
+                                      profileForm.profileColor === color ? 'border-slate-800 scale-110' : 'border-transparent hover:scale-105'
+                                   }`}
+                                   style={{ backgroundColor: color }}
+                                 />
+                              ))}
                            </div>
                         </div>
 
@@ -958,7 +1128,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                           <td className="p-4 text-right">
                             <button 
                               onClick={() => saveTeacherAttendance(teacher)}
-                              className="text-school-primary hover:text-school-dark p-2 hover:bg-purple-50 rounded-lg transition-colors"
+                              className="text-school-primary hover:text-school-dark p-2 hover:bg-blue-50 rounded-lg transition-colors"
                               title="Guardar"
                             >
                               <Save size={18} />
@@ -974,118 +1144,221 @@ export const Dashboard: React.FC<DashboardProps> = ({
         );
 
       case 'schedule-control':
+        const adminDays = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'];
+        const editingSchedules = schedules.filter(s => s.grade === editingScheduleGrade);
+        
+        // If no grade selected, show selection grid (similar to View Schedules)
+        if (!editingScheduleGrade) {
+            return (
+                <div className="space-y-6">
+                    <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                        <h2 className="text-xl font-display font-bold text-amber-600">Gestión de Horarios</h2>
+                        <p className="text-slate-500 text-sm">Selecciona un aula para editar o crear su horario.</p>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {CLASSROOMS.map(classroom => {
+                            const count = schedules.filter(s => s.grade === classroom).length;
+                            return (
+                                <button
+                                    key={classroom}
+                                    onClick={() => setEditingScheduleGrade(classroom)}
+                                    className="p-6 rounded-xl border border-amber-100 bg-white hover:border-school-accent hover:shadow-md transition-all text-left relative group flex flex-col items-center justify-center gap-3"
+                                >
+                                    <div className="w-12 h-12 rounded-full bg-amber-50 text-school-accent flex items-center justify-center group-hover:bg-amber-100 transition-colors">
+                                        <Edit3 size={24} />
+                                    </div>
+                                    <span className="font-bold text-school-dark text-center">{classroom}</span>
+                                    <span className="text-xs text-slate-400">{count} clases configuradas</span>
+                                </button>
+                            )
+                        })}
+                    </div>
+                </div>
+            );
+        }
+
+        // If grade selected, show visual editor
         return (
-          <div className="space-y-6">
-             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-                <h2 className="text-xl font-display font-bold text-school-dark">Gestión de Horarios</h2>
-                <p className="text-slate-500 text-sm">Agregar o eliminar cursos del horario</p>
-             </div>
+            <div className="space-y-6">
+                {/* Success Toast */}
+                {scheduleSuccessMsg && (
+                   <div className="fixed bottom-6 right-6 bg-green-500 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-2 animate-in slide-in-from-bottom-5 z-50">
+                       <CheckCircle size={20} />
+                       {scheduleSuccessMsg}
+                   </div>
+                )}
 
-             {/* Add Schedule Form */}
-             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
-               <h3 className="font-bold text-school-dark mb-4 flex items-center gap-2"><Plus size={18}/> Nuevo Curso</h3>
-               <form onSubmit={handleAddSchedule} className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-7 gap-4 items-end">
-                  <div className="col-span-1 md:col-span-2">
-                     <label className="text-xs font-bold text-slate-500 mb-1 block">Curso</label>
-                     <input 
-                       type="text" 
-                       placeholder="Ej. Historia"
-                       className="w-full p-2 bg-school-light border-none rounded-lg text-sm outline-none focus:ring-2 focus:ring-school-primary"
-                       value={newSchedule.subject}
-                       onChange={e => setNewSchedule({...newSchedule, subject: e.target.value})}
-                     />
-                  </div>
-                  <div>
-                     <label className="text-xs font-bold text-slate-500 mb-1 block">Día</label>
-                     <select 
-                       className="w-full p-2 bg-school-light border-none rounded-lg text-sm outline-none focus:ring-2 focus:ring-school-primary"
-                       value={newSchedule.day}
-                       onChange={e => setNewSchedule({...newSchedule, day: e.target.value})}
-                     >
-                       {['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'].map(d => <option key={d} value={d}>{d}</option>)}
-                     </select>
-                  </div>
-                  <div>
-                     <label className="text-xs font-bold text-slate-500 mb-1 block">Grado</label>
-                     <select 
-                       className="w-full p-2 bg-school-light border-none rounded-lg text-sm outline-none focus:ring-2 focus:ring-school-primary"
-                       value={newSchedule.grade}
-                       onChange={e => setNewSchedule({...newSchedule, grade: e.target.value})}
-                     >
-                       {CLASSROOMS.map(c => (
-                         <option key={c} value={c}>{c}</option>
-                       ))}
-                     </select>
-                  </div>
-                  <div>
-                     <label className="text-xs font-bold text-slate-500 mb-1 block">Docente</label>
-                     <select 
-                       className="w-full p-2 bg-school-light border-none rounded-lg text-sm outline-none focus:ring-2 focus:ring-school-primary"
-                       value={newSchedule.teacherName}
-                       onChange={e => setNewSchedule({...newSchedule, teacherName: e.target.value})}
-                     >
-                       <option value="">Seleccionar</option>
-                       {teachers.map(t => (
-                         <option key={t.id} value={t.name}>{t.name}</option>
-                       ))}
-                     </select>
-                  </div>
-                  <div>
-                     <label className="text-xs font-bold text-slate-500 mb-1 block">Inicio</label>
-                     <input 
-                       type="time" 
-                       className="w-full p-2 bg-school-light border-none rounded-lg text-sm outline-none focus:ring-2 focus:ring-school-primary"
-                       value={newSchedule.startTime}
-                       onChange={e => setNewSchedule({...newSchedule, startTime: e.target.value})}
-                     />
-                  </div>
-                  <div>
-                     <label className="text-xs font-bold text-slate-500 mb-1 block">Fin</label>
-                     <input 
-                       type="time" 
-                       className="w-full p-2 bg-school-light border-none rounded-lg text-sm outline-none focus:ring-2 focus:ring-school-primary"
-                       value={newSchedule.endTime}
-                       onChange={e => setNewSchedule({...newSchedule, endTime: e.target.value})}
-                     />
-                  </div>
-                  <div className="lg:col-span-7 flex justify-end">
-                     <button type="submit" className="px-6 py-2 bg-school-primary text-white rounded-lg font-bold text-sm hover:bg-school-dark transition-colors">Agregar Curso</button>
-                  </div>
-               </form>
-             </div>
+                <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
+                    <div className="flex items-center gap-4">
+                        <button 
+                           onClick={() => setEditingScheduleGrade(null)} 
+                           className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors"
+                        >
+                           <ArrowLeft size={20} />
+                        </button>
+                        <div>
+                            <h2 className="text-xl font-display font-bold text-school-dark">Editando: {editingScheduleGrade}</h2>
+                            <p className="text-slate-500 text-sm">Organiza las clases para este grado</p>
+                        </div>
+                    </div>
+                    <div className="flex gap-2">
+                        <button 
+                            onClick={openAddScheduleModal} 
+                            className="bg-school-light text-school-primary border border-school-primary/20 px-4 py-2 rounded-xl font-bold flex items-center gap-2 hover:bg-school-primary hover:text-white transition-all"
+                        >
+                            <Plus size={18} />
+                            Agregar Clase
+                        </button>
+                        <button 
+                            onClick={handlePublishSchedules} 
+                            className="bg-amber-500 text-white px-6 py-2 rounded-xl font-bold shadow-md hover:bg-amber-600 transition-colors flex items-center gap-2"
+                        >
+                            <Upload size={18} />
+                            Publicar Cambios
+                        </button>
+                    </div>
+                </div>
 
-             {/* List of Schedules */}
-             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-                <table className="w-full text-left">
-                  <thead className="bg-slate-50 text-slate-500 font-semibold text-xs uppercase">
-                    <tr>
-                      <th className="p-4">Día</th>
-                      <th className="p-4">Horario</th>
-                      <th className="p-4">Curso</th>
-                      <th className="p-4">Grado</th>
-                      <th className="p-4">Docente</th>
-                      <th className="p-4 text-right">Acción</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 text-sm text-slate-600">
-                    {schedules.map(item => (
-                      <tr key={item.id} className="hover:bg-slate-50">
-                        <td className="p-4 font-medium">{item.day}</td>
-                        <td className="p-4">{item.startTime} - {item.endTime}</td>
-                        <td className="p-4 text-school-primary font-bold">{item.subject}</td>
-                        <td className="p-4">{item.grade}</td>
-                        <td className="p-4 text-school-secondary">{item.teacherName || '-'}</td>
-                        <td className="p-4 text-right">
-                          <button onClick={() => handleDeleteSchedule(item.id)} className="text-red-400 hover:text-red-600 p-2 hover:bg-red-50 rounded-lg transition-colors">
-                            <Trash2 size={16} />
-                          </button>
-                        </td>
-                      </tr>
+                {/* Visual Grid Editor */}
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    {adminDays.map(day => (
+                        <div key={day} className="space-y-3">
+                            <div className="bg-school-dark text-white text-center py-3 rounded-xl font-bold text-sm shadow-sm sticky top-0 z-10">
+                                {day}
+                            </div>
+                            <div className="space-y-2 min-h-[200px] bg-slate-50/50 p-2 rounded-xl border border-dashed border-slate-200">
+                                {editingSchedules
+                                    .filter(s => s.day === day)
+                                    .sort((a, b) => a.startTime.localeCompare(b.startTime))
+                                    .map(session => (
+                                    <div key={session.id} className="bg-white p-3 rounded-xl border border-slate-100 shadow-sm hover:shadow-md transition-all group relative">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <span className="font-bold text-school-dark text-sm truncate pr-4">{session.subject}</span>
+                                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button onClick={() => openEditScheduleModal(session)} className="text-school-primary hover:bg-blue-50 p-1 rounded">
+                                                    <Edit3 size={14} />
+                                                </button>
+                                                <button onClick={() => handleDeleteSchedule(session.id)} className="text-red-400 hover:bg-red-50 p-1 rounded">
+                                                    <Trash2 size={14} />
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-1 text-xs text-school-secondary font-medium mt-1">
+                                            <UserCheck size={12} />
+                                            <span>{session.teacherName || 'Sin docente'}</span>
+                                        </div>
+                                        <div className="flex items-center gap-1 text-xs text-slate-400 mt-1">
+                                            <Clock size={12} />
+                                            <span>{session.startTime} - {session.endTime}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                                {editingSchedules.filter(s => s.day === day).length === 0 && (
+                                    <div className="flex flex-col items-center justify-center h-full text-slate-300 py-4">
+                                        <span className="text-xs italic">Sin clases</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     ))}
-                  </tbody>
-                </table>
-             </div>
-          </div>
+                </div>
+
+                {/* ADD/EDIT MODAL */}
+                {isScheduleModalOpen && (
+                    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-school-dark/50 backdrop-blur-sm">
+                        <div className="bg-white rounded-3xl shadow-2xl p-8 max-w-md w-full animate-in zoom-in-95 duration-200">
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-xl font-bold text-school-dark">
+                                    {editingScheduleId ? 'Editar Clase' : 'Nueva Clase'}
+                                </h3>
+                                <button onClick={() => setIsScheduleModalOpen(false)} className="text-slate-400 hover:text-slate-600">
+                                    <X size={24} />
+                                </button>
+                            </div>
+                            
+                            <form onSubmit={handleSaveScheduleItem} className="space-y-4">
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 mb-1 block">Curso / Materia</label>
+                                    <input 
+                                        type="text" 
+                                        placeholder="Ej. Matemáticas"
+                                        className="w-full p-3 bg-school-light border-none rounded-xl text-sm outline-none focus:ring-2 focus:ring-school-primary"
+                                        value={scheduleForm.subject}
+                                        onChange={e => setScheduleForm({...scheduleForm, subject: e.target.value})}
+                                        required
+                                    />
+                                </div>
+                                
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-500 mb-1 block">Día</label>
+                                        <select 
+                                            className="w-full p-3 bg-school-light border-none rounded-xl text-sm outline-none focus:ring-2 focus:ring-school-primary"
+                                            value={scheduleForm.day}
+                                            onChange={e => setScheduleForm({...scheduleForm, day: e.target.value})}
+                                        >
+                                            {adminDays.map(d => <option key={d} value={d}>{d}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-500 mb-1 block">Docente</label>
+                                        <select 
+                                            className="w-full p-3 bg-school-light border-none rounded-xl text-sm outline-none focus:ring-2 focus:ring-school-primary"
+                                            value={scheduleForm.teacherName}
+                                            onChange={e => setScheduleForm({...scheduleForm, teacherName: e.target.value})}
+                                        >
+                                            <option value="">Seleccionar</option>
+                                            {teachers.map(t => (
+                                                <option key={t.id} value={t.name}>{t.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-500 mb-1 block">Hora Inicio</label>
+                                        <input 
+                                            type="time" 
+                                            className="w-full p-3 bg-school-light border-none rounded-xl text-sm outline-none focus:ring-2 focus:ring-school-primary"
+                                            value={scheduleForm.startTime}
+                                            onChange={e => setScheduleForm({...scheduleForm, startTime: e.target.value})}
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-500 mb-1 block">Hora Fin</label>
+                                        <input 
+                                            type="time" 
+                                            className="w-full p-3 bg-school-light border-none rounded-xl text-sm outline-none focus:ring-2 focus:ring-school-primary"
+                                            value={scheduleForm.endTime}
+                                            onChange={e => setScheduleForm({...scheduleForm, endTime: e.target.value})}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="pt-4 flex gap-3">
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setIsScheduleModalOpen(false)}
+                                        className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold hover:bg-slate-200 transition-colors"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button 
+                                        type="submit" 
+                                        className="flex-1 py-3 bg-school-primary text-white rounded-xl font-bold shadow-lg hover:bg-school-dark transition-colors"
+                                    >
+                                        {editingScheduleId ? 'Guardar Cambios' : 'Agregar Clase'}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                )}
+            </div>
         );
 
       case 'manage-accounts':
@@ -1193,7 +1466,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         <tbody className="divide-y divide-slate-100 text-sm">
                           {filteredAccounts.map(acc => (
                             <tr key={acc.id} className="hover:bg-slate-50">
-                              <td className="p-4 font-bold text-school-primary">{acc.username}</td>
+                              <td className="p-4 font-bold text-school-primary flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{backgroundColor: acc.profileColor || '#0EA5E9'}}>
+                                    {acc.name.charAt(0)}
+                                </div>
+                                {acc.username}
+                              </td>
                               <td className="p-4 text-slate-700">{acc.name}</td>
                               <td className="p-4">
                                  <span className={`px-2 py-1 rounded-full text-xs font-bold ${acc.role === 'admin' ? 'bg-school-dark text-white' : 'bg-blue-100 text-blue-600'}`}>
@@ -1463,7 +1741,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                                 <div className="text-xs text-slate-400">{t.email}</div>
                               </td>
                               <td className="p-4">
-                                 <span className={`px-2 py-1 rounded-full text-xs font-bold ${t.teacherType === 'tutor' ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}`}>
+                                 <span className={`px-2 py-1 rounded-full text-xs font-bold ${t.teacherType === 'tutor' ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'}`}>
                                     {t.teacherType === 'tutor' ? 'Tutor Aula' : 'Docente Curso'}
                                  </span>
                                  <div className="text-xs text-slate-400 mt-1">{t.specialty}</div>
@@ -1524,14 +1802,21 @@ export const Dashboard: React.FC<DashboardProps> = ({
                         <button
                           key={item.id}
                           onClick={() => setActiveSection(item.id)}
-                          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
                             activeSection === item.id 
                               ? (isAdminItem ? 'bg-amber-50 text-school-accent' : 'bg-school-light text-school-primary')
                               : (isAdminItem ? 'text-amber-600 hover:bg-amber-50 hover:text-amber-700' : 'text-slate-600 hover:bg-slate-50 hover:text-school-dark')
                           }`}
                         >
-                          {item.icon}
-                          {item.label}
+                          <div className="flex items-center gap-3">
+                             {item.icon}
+                             {item.label}
+                          </div>
+                          
+                          {/* Notification Dot for Sidebar */}
+                          {item.badge && item.badge > 0 && (
+                             <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                          )}
                         </button>
                       );
                     })}

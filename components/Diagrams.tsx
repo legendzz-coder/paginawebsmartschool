@@ -15,25 +15,25 @@ export const ServicesGrid: React.FC = () => {
       icon: <GraduationCap size={32} />,
       title: "Educación de Calidad",
       desc: "Aplicamos metodologías innovadoras para el desarrollo académico y personal de cada estudiante.",
-      color: "bg-purple-100 text-school-primary" // Purple
+      color: "bg-sky-100 text-school-primary" // Light Blue
     },
     {
       icon: <Building2 size={32} />,
       title: "Infraestructura Moderna",
       desc: "Contamos con ambientes seguros, aulas equipadas y zonas recreativas para el aprendizaje ideal.",
-      color: "bg-sky-100 text-school-secondary" // Light Blue
+      color: "bg-sky-50 text-school-secondary" // Lighter Blue
     },
     {
       icon: <Users size={32} />,
       title: "Formación Integral",
       desc: "Promovemos el desarrollo académico, social y emocional para construir una comunidad sólida.",
-      color: "bg-amber-100 text-yellow-600" // Gold/Amber
+      color: "bg-amber-100 text-yellow-700" // Gold/Amber
     },
     {
       icon: <Book size={32} />,
       title: "Biblioteca Virtual",
       desc: "Brindamos acceso a recursos educativos digitales actualizados para fortalecer el aprendizaje.",
-      color: "bg-indigo-100 text-indigo-600" // Deep Purple/Indigo
+      color: "bg-slate-200 text-school-dark" // Slate/Dark
     }
   ];
 
